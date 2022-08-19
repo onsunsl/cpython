@@ -65,6 +65,13 @@ whose size is determined when the object is allocated.
 
 
 #ifdef Py_TRACE_REFS
+
+/* _PyObject_HEAD_EXTRA
+ * 这个宏是用来实现一个名叫refchain的"双向链表"的，Python会将程序中创建的所有对象都放入到这个双向链表中，用于跟踪所有活跃的堆对像。
+ * 每一个对象都指向了它的前一个对象和后一个对象，如果是第一个对象，那么它的前继节点为NULL；如果是最后一个节点，那么它的后继节点为NULL。
+ * 不过这个宏仅仅是在debug下有用，所以我们目前不需要管这个宏。
+ */
+
 /* Define pointers to support a doubly-linked list of all live heap objects. */
 #define _PyObject_HEAD_EXTRA            \
     struct _object *_ob_next;           \
@@ -77,13 +84,18 @@ whose size is determined when the object is allocated.
 #define _PyObject_EXTRA_INIT
 #endif
 
-/* PyObject_HEAD defines the initial segment of every PyObject. */
+/* PyObject_HEAD defines the initial segment of every PyObject.
+ * PyObject 是所有对象的核心基本信息， 所以提供一个便捷统一的宏
+ */
 #define PyObject_HEAD                   PyObject ob_base;
 
+
+/* 对象基本初始： 链表、计数、类型 */
 #define PyObject_HEAD_INIT(type)        \
     { _PyObject_EXTRA_INIT              \
     1, type },
 
+/* 可变对象初始： 链表、 计数、 类型， 元素个数 */
 #define PyVarObject_HEAD_INIT(type, size)       \
     { PyObject_HEAD_INIT(type) size },
 
@@ -100,26 +112,41 @@ whose size is determined when the object is allocated.
  * a Python object can be cast to a PyObject*.  This is inheritance built
  * by hand.  Similarly every pointer to a variable-size Python object can,
  * in addition, be cast to PyVarObject*.
+ * Python中一切皆对象，而所有的对象都拥有一些共同的信息(也叫头部信息)，这些信息就在PyObject中，
+ * PyObject是Python整个对象机制的核心
  */
 typedef struct _object {
+
+    // 调试使用的双向链表指针
     _PyObject_HEAD_EXTRA
+
+    // 对象引用计数
     Py_ssize_t ob_refcnt;
+
+    // 对象类型指针
     struct _typeobject *ob_type;
 } PyObject;
 
-/* Cast argument to PyObject* type. */
+
+/* Cast argument to PyObject* type. 转成Py对象指针*/
 #define _PyObject_CAST(op) ((PyObject*)(op))
 
+/* 可变对象基础类型 如果list, tuple继承该类型 */
 typedef struct {
-    PyObject ob_base;
-    Py_ssize_t ob_size; /* Number of items in variable part */
+    PyObject ob_base;   /* 对象基础结构 */
+    Py_ssize_t ob_size; /* Number of items in variable part 元素个数 */
 } PyVarObject;
 
-/* Cast argument to PyVarObject* type. */
+/* Cast argument to PyVarObject* type. 转可变对象 */
 #define _PyVarObject_CAST(op) ((PyVarObject*)(op))
 
+/* 取对象引用计数值 */
 #define Py_REFCNT(ob)           (_PyObject_CAST(ob)->ob_refcnt)
+
+/* 取对象类型描述结构指针 */
 #define Py_TYPE(ob)             (_PyObject_CAST(ob)->ob_type)
+
+/* 可变对象元素个数 */
 #define Py_SIZE(ob)             (_PyVarObject_CAST(ob)->ob_size)
 
 /*
@@ -200,6 +227,11 @@ PyAPI_FUNC(void*) PyType_GetSlot(struct _typeobject*, int);
 
 /* Generic type check */
 PyAPI_FUNC(int) PyType_IsSubtype(struct _typeobject *, struct _typeobject *);
+
+/** ob 对象的ob_type类型 是否是指定的tp 类型
+ *  ob 对象
+ *  tp 对象类型
+ * */
 #define PyObject_TypeCheck(ob, tp) \
     (Py_TYPE(ob) == (tp) || PyType_IsSubtype(Py_TYPE(ob), (tp)))
 

@@ -91,7 +91,7 @@ typedef PyObject *(*vectorcallfunc)(PyObject *callable, PyObject *const *args,
 #define PyBUF_WRITE 0x200
 /* End buffer interface */
 
-
+// 数值对象的操作方法集合
 typedef struct {
     /* Number implementations must check *both*
        arguments for proper type and implement the necessary conversions
@@ -139,6 +139,7 @@ typedef struct {
     binaryfunc nb_inplace_matrix_multiply;
 } PyNumberMethods;
 
+// 序列（列表）对象的操作方法集合
 typedef struct {
     lenfunc sq_length;
     binaryfunc sq_concat;
@@ -153,12 +154,14 @@ typedef struct {
     ssizeargfunc sq_inplace_repeat;
 } PySequenceMethods;
 
+// 字典类型操作方法集合
 typedef struct {
     lenfunc mp_length;
     binaryfunc mp_subscript;
     objobjargproc mp_ass_subscript;
 } PyMappingMethods;
 
+// 异步对象操作方法集合
 typedef struct {
     unaryfunc am_await;
     unaryfunc am_aiter;
@@ -174,31 +177,53 @@ typedef struct {
  * backwards-compatibility */
 typedef Py_ssize_t printfunc;
 
+
+/* 对象类型描述结构体
+ * 描述了对象的内存分配， 有哪些操作方法
+ * */
 typedef struct _typeobject {
     PyObject_VAR_HEAD
+
+    // 类型名称 如果int，str
     const char *tp_name; /* For printing, in format "<module>.<name>" */
+
+    // 创建对应实例对象时所需要的内存信息
     Py_ssize_t tp_basicsize, tp_itemsize; /* For allocation */
 
-    /* Methods to implement standard operations */
-
+    /* Methods to implement standard operations 对象的标注操作方法*/
+    // 对象析构函数指针
     destructor tp_dealloc;
+
     Py_ssize_t tp_vectorcall_offset;
+
+    // 获取对象成员函数指针
     getattrfunc tp_getattr;
+
+    // 设置对象成员函数指针
     setattrfunc tp_setattr;
+
+    // 异步对象操作方法集合
     PyAsyncMethods *tp_as_async; /* formerly known as tp_compare (Python 2)
                                     or tp_reserved (Python 3) */
     reprfunc tp_repr;
 
     /* Method suites for standard classes */
-
+    // 当对象是数值时它的操作方法集合（仅为数值对象类似int, float等时有效）
     PyNumberMethods *tp_as_number;
+
+    // 当对象是序列类型时它的操作方法集合（仅为序列对象list, tuple等时有效）
     PySequenceMethods *tp_as_sequence;
+
+    // 当对象是map类型时它的操作方法集合（仅为序列对象dict等时有效）
     PyMappingMethods *tp_as_mapping;
 
     /* More standard operations (here for binary compatibility) */
 
     hashfunc tp_hash;
+
+    // 可调用对象对应py __call__
     ternaryfunc tp_call;
+
     reprfunc tp_str;
     getattrofunc tp_getattro;
     setattrofunc tp_setattro;
@@ -243,7 +268,10 @@ typedef struct _typeobject {
     newfunc tp_new;
     freefunc tp_free; /* Low-level free-memory routine */
     inquiry tp_is_gc; /* For PyObject_IS_GC */
+
+    // 基类
     PyObject *tp_bases;
+
     PyObject *tp_mro; /* method resolution order */
     PyObject *tp_cache;
     PyObject *tp_subclasses;
@@ -257,6 +285,7 @@ typedef struct _typeobject {
     vectorcallfunc tp_vectorcall;
 
     /* bpo-37250: kept for backwards compatibility in CPython 3.8 only */
+    // tp_print 在3.8 以后弃用
     Py_DEPRECATED(3.8) int (*tp_print)(PyObject *, FILE *, int);
 
 #ifdef COUNT_ALLOCS

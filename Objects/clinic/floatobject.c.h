@@ -157,6 +157,10 @@ float_as_integer_ratio(PyObject *self, PyObject *Py_UNUSED(ignored))
     return float_as_integer_ratio_impl(self);
 }
 
+/**
+ *  float 类型__doc__ 值
+ *  static const char float_new__doc__[] = 下面的文档串
+ */
 PyDoc_STRVAR(float_new__doc__,
 "float(x=0, /)\n"
 "--\n"

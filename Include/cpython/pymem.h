@@ -50,20 +50,26 @@ typedef enum {
 } PyMemAllocatorName;
 
 
+/**
+ * Py 内存分配器， 在obmalloc.c 声明了静态实例
+ * */
 typedef struct {
     /* user context passed as the first argument to the 4 functions */
+
+    /* 指向 obmalloc.c中实现的 debug_alloc_api_t 结构
+     * 其实是为了标注 PyMemAllocatorEx 名称， 用于反射？*/
     void *ctx;
 
-    /* allocate a memory block */
+    /* allocate a memory block 非配内存快 */
     void* (*malloc) (void *ctx, size_t size);
 
-    /* allocate a memory block initialized by zeros */
+    /* allocate a memory block initialized by zeros 分配内存&初始化为0 */
     void* (*calloc) (void *ctx, size_t nelem, size_t elsize);
 
-    /* allocate or resize a memory block */
+    /* allocate or resize a memory block 分配或调整内存块 */
     void* (*realloc) (void *ctx, void *ptr, size_t new_size);
 
-    /* release a memory block */
+    /* release a memory block 释放内存快 */
     void (*free) (void *ctx, void *ptr);
 } PyMemAllocatorEx;
 

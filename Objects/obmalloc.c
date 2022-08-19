@@ -193,6 +193,8 @@ typedef struct {
     char api_id;
     PyMemAllocatorEx alloc;
 } debug_alloc_api_t;
+
+// 内存分配管理集合（声明和赋值一体）
 static struct {
     debug_alloc_api_t raw;
     debug_alloc_api_t mem;
@@ -207,12 +209,22 @@ static struct {
     {&_PyMem_Debug.raw, _PyMem_DebugRawMalloc, _PyMem_DebugRawCalloc, _PyMem_DebugRawRealloc, _PyMem_DebugRawFree}
 #define PYDBGMEM_ALLOC \
     {&_PyMem_Debug.mem, _PyMem_DebugMalloc, _PyMem_DebugCalloc, _PyMem_DebugRealloc, _PyMem_DebugFree}
+
+// Py 对象分别器方法(实际调用函数)
 #define PYDBGOBJ_ALLOC \
     {&_PyMem_Debug.obj, _PyMem_DebugMalloc, _PyMem_DebugCalloc, _PyMem_DebugRealloc, _PyMem_DebugFree}
 
 #ifdef Py_DEBUG
 static PyMemAllocatorEx _PyMem_Raw = PYDBGRAW_ALLOC;
 static PyMemAllocatorEx _PyMem = PYDBGMEM_ALLOC;
+
+/** Py 对象内存分配器
+ *  _PyObject.ctx = &_PyMem_Debug.obj = {'o', PYOBJ_ALLOC} = {NULL, _PyObject_Malloc, _PyObject_Calloc, _PyObject_Realloc, _PyObject_Free}
+ *  _PyObject.malloc = _PyMem_DebugMalloc
+ *  _PyObject.calloc = _PyMem_DebugCalloc
+ *  _PyObject.realloc = _PyMem_DebugRealloc
+ *  _PyObject.free = _PyMem_DebugFree
+ */
 static PyMemAllocatorEx _PyObject = PYDBGOBJ_ALLOC;
 #else
 static PyMemAllocatorEx _PyMem_Raw = PYRAW_ALLOC;
@@ -703,6 +715,9 @@ PyObject_Realloc(void *ptr, size_t new_size)
     return _PyObject.realloc(_PyObject.ctx, ptr, new_size);
 }
 
+/**
+ *  释放对象
+ */
 void
 PyObject_Free(void *ptr)
 {

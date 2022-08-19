@@ -12,15 +12,26 @@ extern "C" {
 #endif
 
 #ifndef Py_LIMITED_API
+
+/**
+ *  Py浮点对象 内存： 4byte类型指针 + 4 byte引用计数 + 8byte double值
+ */
 typedef struct {
+    // 展开后是 PyObject ob_base py基本对象信息
     PyObject_HEAD
+
+    // PyFloatObject浮点值
     double ob_fval;
 } PyFloatObject;
 #endif
 
+// 对外暴露浮点类型的PyTypeObject 实例
 PyAPI_DATA(PyTypeObject) PyFloat_Type;
 
+// 检测对象指针op是否是 浮点PyTypeObject类型
 #define PyFloat_Check(op) PyObject_TypeCheck(op, &PyFloat_Type)
+
+// 检测对象指针op是否是 浮点PyTypeObject类型
 #define PyFloat_CheckExact(op) (Py_TYPE(op) == &PyFloat_Type)
 
 #ifdef Py_NAN
@@ -47,7 +58,10 @@ PyAPI_FUNC(PyObject *) PyFloat_FromDouble(double);
 /* Extract C double from Python float.  The macro version trades safety for
    speed. */
 PyAPI_FUNC(double) PyFloat_AsDouble(PyObject *);
+
 #ifndef Py_LIMITED_API
+
+// 取PyFloatObject对象的浮点值
 #define PyFloat_AS_DOUBLE(op) (((PyFloatObject *)(op))->ob_fval)
 #endif
 

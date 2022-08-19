@@ -48,13 +48,16 @@ PyAPI_FUNC(PyObject *) _PyCFunction_FastCallDict(PyObject *func,
     PyObject *kwargs);
 #endif
 
+// Py 成员方法描述结构体
 struct PyMethodDef {
-    const char  *ml_name;   /* The name of the built-in function/method */
-    PyCFunction ml_meth;    /* The C function that implements it */
-    int         ml_flags;   /* Combination of METH_xxx flags, which mostly
+    const char  *ml_name;   /* 名称 The name of the built-in function/method */
+    PyCFunction ml_meth;    /* C函数指针 The C function that implements it */
+    int         ml_flags;   /* C函数参数描述 Combination of METH_xxx flags, which mostly
                                describe the args expected by the C func */
-    const char  *ml_doc;    /* The __doc__ attribute, or NULL */
+    const char  *ml_doc;    /* 函数文档描述 The __doc__ attribute, or NULL */
 };
+
+// Py 成员方法描述结类型声明
 typedef struct PyMethodDef PyMethodDef;
 
 #define PyCFunction_New(ML, SELF) PyCFunction_NewEx((ML), (SELF), NULL)

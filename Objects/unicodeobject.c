@@ -2210,6 +2210,10 @@ _PyUnicode_ClearStaticStrings()
 
 /* Internal function, doesn't check maximum character */
 
+
+/**
+ * ascii 转 unicode 对象
+ * */
 PyObject*
 _PyUnicode_FromASCII(const char *buffer, Py_ssize_t size)
 {

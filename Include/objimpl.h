@@ -99,6 +99,8 @@ PyAPI_FUNC(void *) PyObject_Malloc(size_t size);
 PyAPI_FUNC(void *) PyObject_Calloc(size_t nelem, size_t elsize);
 #endif
 PyAPI_FUNC(void *) PyObject_Realloc(void *ptr, size_t new_size);
+
+// 释放对象函数
 PyAPI_FUNC(void) PyObject_Free(void *ptr);
 
 

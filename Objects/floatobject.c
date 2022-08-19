@@ -212,11 +212,17 @@ PyFloat_FromString(PyObject *v)
     return result;
 }
 
+
+/**
+ *  PyFloat_Type 析构方法
+ */
 static void
 float_dealloc(PyFloatObject *op)
 {
+    // 判断是否是PyFloat_Type
     if (PyFloat_CheckExact(op)) {
         if (numfree >= PyFloat_MAXFREELIST)  {
+            // 调用_PyObject.free 实现内存释放
             PyObject_FREE(op);
             return;
         }
@@ -321,24 +327,33 @@ convert_to_double(PyObject **v, double *dbl)
     return 0;
 }
 
+/**
+ *  浮点对象转string
+ * */
 static PyObject *
 float_repr(PyFloatObject *v)
 {
     PyObject *result;
     char *buf;
 
+    // double 转 ascii(内部申请内存)返回内存指针
     buf = PyOS_double_to_string(PyFloat_AS_DOUBLE(v),
                                 'r', 0,
                                 Py_DTSF_ADD_DOT_0,
                                 NULL);
     if (!buf)
         return PyErr_NoMemory();
+
+    // ascii 转 unicode pyobj
     result = _PyUnicode_FromASCII(buf, strlen(buf));
+
+    // 释放内存
     PyMem_Free(buf);
     return result;
 }
 
-/* Comparison is pretty much a nightmare.  When comparing float to float,
+/* 浮点对象比较
+ * Comparison is pretty much a nightmare.  When comparing float to float,
  * we do it as straightforwardly (and long-windedly) as conceivable, so
  * that, e.g., Python x == y delivers the same result as the platform
  * C x == y when x and/or y is a NaN.
@@ -544,11 +559,17 @@ static PyObject *
 float_add(PyObject *v, PyObject *w)
 {
     double a,b;
+    // 宏对v 类型的浮点类型判断后取值给a
     CONVERT_TO_DOUBLE(v, a);
+    // 宏对w 类型的浮点类型判断后取值给b
     CONVERT_TO_DOUBLE(w, b);
+
+    // 浮点数异常检测
     PyFPE_START_PROTECT("add", return 0)
     a = a + b;
     PyFPE_END_PROTECT(a)
+
+    //  new 一个新的PyFloatObject对象返回
     return PyFloat_FromDouble(a);
 }
 
@@ -1815,6 +1836,7 @@ float___format___impl(PyObject *self, PyObject *format_spec)
     return _PyUnicodeWriter_Finish(&writer);
 }
 
+// 浮点对象的成员方法
 static PyMethodDef float_methods[] = {
     FLOAT_CONJUGATE_METHODDEF
     FLOAT___TRUNC___METHODDEF
@@ -1842,18 +1864,20 @@ static PyGetSetDef float_getset[] = {
     {NULL}  /* Sentinel */
 };
 
-
+/**
+ *   float 操作方法集合
+ * */
 static PyNumberMethods float_as_number = {
-    float_add,          /* nb_add */
-    float_sub,          /* nb_subtract */
-    float_mul,          /* nb_multiply */
-    float_rem,          /* nb_remainder */
-    float_divmod,       /* nb_divmod */
-    float_pow,          /* nb_power */
-    (unaryfunc)float_neg, /* nb_negative */
+    float_add,          /* + nb_add */
+    float_sub,          /* — nb_subtract */
+    float_mul,          /* * nb_multiply */
+    float_rem,          /* % nb_remainder */
+    float_divmod,       /* / nb_divmod */
+    float_pow,          /* 乘方 nb_power */
+    (unaryfunc)float_neg, /* 取负 nb_negative */
     float_float,        /* nb_positive */
-    (unaryfunc)float_abs, /* nb_absolute */
-    (inquiry)float_bool, /* nb_bool */
+    (unaryfunc)float_abs, /* 绝对值 nb_absolute */
+    (inquiry)float_bool, /* 取bool nb_bool */
     0,                  /* nb_invert */
     0,                  /* nb_lshift */
     0,                  /* nb_rshift */
@@ -1882,31 +1906,54 @@ static PyNumberMethods float_as_number = {
 PyTypeObject PyFloat_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
     "float",
+
+    // tp_basicsize 大小
     sizeof(PyFloatObject),
+
+    // tp_itemsize 大小
     0,
+
+    // 析构函数
     (destructor)float_dealloc,                  /* tp_dealloc */
+
+    // 调用偏移向量
     0,                                          /* tp_vectorcall_offset */
+
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
     0,                                          /* tp_as_async */
+
+    // 转支付传
     (reprfunc)float_repr,                       /* tp_repr */
+
+    // 做为数值类型的操作方法集合
     &float_as_number,                           /* tp_as_number */
     0,                                          /* tp_as_sequence */
     0,                                          /* tp_as_mapping */
+
+    // 浮点哈希？
     (hashfunc)float_hash,                       /* tp_hash */
     0,                                          /* tp_call */
     0,                                          /* tp_str */
+
+    // 取attr
     PyObject_GenericGetAttr,                    /* tp_getattro */
     0,                                          /* tp_setattro */
     0,                                          /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,   /* tp_flags */
+
+    // float 文档类型
     float_new__doc__,                           /* tp_doc */
     0,                                          /* tp_traverse */
     0,                                          /* tp_clear */
+
+    // 浮点对象比较
     float_richcompare,                          /* tp_richcompare */
     0,                                          /* tp_weaklistoffset */
     0,                                          /* tp_iter */
     0,                                          /* tp_iternext */
+
+    // 成员方法集合
     float_methods,                              /* tp_methods */
     0,                                          /* tp_members */
     float_getset,                               /* tp_getset */
@@ -1917,6 +1964,8 @@ PyTypeObject PyFloat_Type = {
     0,                                          /* tp_dictoffset */
     0,                                          /* tp_init */
     0,                                          /* tp_alloc */
+
+    // 构造
     float_new,                                  /* tp_new */
 };
 
