@@ -812,6 +812,7 @@ PyObject_HashNotImplemented(PyObject *v)
     return -1;
 }
 
+/** 计算PyObject对象的Hash值 */
 Py_hash_t
 PyObject_Hash(PyObject *v)
 {

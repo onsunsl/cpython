@@ -18,6 +18,8 @@ extern "C" {
  */
 typedef struct {
     // 展开后是 PyObject ob_base py基本对象信息
+    //        Py_ssize_t   ob_refcnt;  对象引用计数
+    // struct _typeobject  *ob_type;   对象类型指针
     PyObject_HEAD
 
     // PyFloatObject浮点值

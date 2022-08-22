@@ -111,20 +111,43 @@ PyFloat_GetInfo(void)
     return floatinfo;
 }
 
+/*
+ * 创新浮点类型对象， 不管什么方式创建浮点类型对象最后都是调用这个方法， 最后new 一个新的对象
+ * 1. 如果内存池free_list 有可用内存，则取上次释放到内存池的内存块，初始化后返回该对象；
+ * 2. 如果内存池free_list 无可用内存，则取向操作系统申请内存块，初始化后返回该对象；
+ * 3. 第一调用时候free_list 是NULL， 所以需要向操作系统申请；
+ * 释放参考： float_dealloc() 方法,
+ *
+ * 为了验证内存池，new a 删除 a, 然后new b, 发现a, b的内存地址（id）是一致的
+ * In [2]: a = 1.2
+ * In [3]: id(a)
+ * Out[3]: 75910512
+ * In [4]: del a
+ * In [5]: b = 1.56
+ * In [6]: id(b)
+ * Out[6]: 75910112
+ *
+ */
 PyObject *
 PyFloat_FromDouble(double fval)
 {
     PyFloatObject *op = free_list;
+
+    // 从内存池取内存
     if (op != NULL) {
         free_list = (PyFloatObject *) Py_TYPE(op);
         numfree--;
+
+    // 从操作系统申请
     } else {
         op = (PyFloatObject*) PyObject_MALLOC(sizeof(PyFloatObject));
         if (!op)
             return PyErr_NoMemory();
     }
-    /* Inline PyObject_New */
+    /* Inline PyObject_New 引用和类型指针初始化 */
     (void)PyObject_INIT(op, &PyFloat_Type);
+
+    /* 浮点值 */
     op->ob_fval = fval;
     return (PyObject *) op;
 }
@@ -213,19 +236,49 @@ PyFloat_FromString(PyObject *v)
 }
 
 
-/**
- *  PyFloat_Type 析构方法
+/*
+   PyFloat_Type 析构方法，针对obj的内存池Py 设计是复用了ObjectType指针，维护一个空闲的单向列表
+   1.内存块 < PyFloat_MAXFREELIST 时候放入空闲内存链表；
+   2.内存块 > PyFloat_MAXFREELIST 时候调用free归还给操作系统；
+   3.构造参考 PyFloat_FromDouble() 方法
+   =============================================================================================
+   第1次释放对象前               第1次释放对象后
+
+   free_list -> NULL            free_list
+                                 \
+   +---obj1----+                +----obj1---+
+   | ob_refcnt |                | ob_refcnt |
+   +-----------+                +-----------+
+   | ob_type   |                | ob_type   | -> NULL
+   +-----------+                +-----------+
+   | ob_fval   |                | ob_fval   |
+   +-----------+                +-----------+
+
+   =============================================================================================
+   第2次释放对象前                                               第2次释放对象后
+
+   free_list -----                                   free_list
+                  \                                   \
+   +---obj2----+   ->   +---obj1----+                 +---obj2----+        +---obj1----+
+   | ob_refcnt |   ->   | ob_refcnt |                 | ob_refcnt |   ->   | ob_refcnt |
+   +-----------+  /     +-----------+                 +-----------+  /     +-----------+
+   | ob_type   |_/      | ob_type   | -> NULL         | ob_type   |_/      | ob_type   | -> NULL
+   +-----------+        +-----------+                 +-----------+        +-----------+
+   | ob_fval   |        | ob_fval   |                 | ob_fval   |        | ob_fval   |
+   +-----------+        +-----------+                 +-----------+        +-----------+
  */
 static void
 float_dealloc(PyFloatObject *op)
 {
     // 判断是否是PyFloat_Type
     if (PyFloat_CheckExact(op)) {
+        // 待释放obj大于内存池数量 直接释放
         if (numfree >= PyFloat_MAXFREELIST)  {
             // 调用_PyObject.free 实现内存释放
             PyObject_FREE(op);
             return;
         }
+        // 添加到free_list
         numfree++;
         Py_TYPE(op) = (struct _typeobject *)free_list;
         free_list = op;
@@ -1962,6 +2015,8 @@ PyTypeObject PyFloat_Type = {
     0,                                          /* tp_descr_get */
     0,                                          /* tp_descr_set */
     0,                                          /* tp_dictoffset */
+
+    // __init__ 方法
     0,                                          /* tp_init */
     0,                                          /* tp_alloc */
 

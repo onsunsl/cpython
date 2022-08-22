@@ -219,6 +219,7 @@ typedef struct _typeobject {
 
     /* More standard operations (here for binary compatibility) */
 
+    // PyObject 层级的对象哈希值计数函数指针
     hashfunc tp_hash;
 
     // 可调用对象对应py __call__

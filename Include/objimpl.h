@@ -134,7 +134,9 @@ PyAPI_FUNC(PyVarObject *) _PyObject_NewVar(PyTypeObject *, Py_ssize_t);
    PyObject_INIT_VAR() is the fast version of PyObject_InitVar.
    See also pymem.h.
 
-   These inline functions expect non-NULL object pointers. */
+   These inline functions expect non-NULL object pointers.
+   为新建对象初初始化： 引用=1， 类型指针=typeobj
+   */
 static inline PyObject*
 _PyObject_INIT(PyObject *op, PyTypeObject *typeobj)
 {
@@ -143,10 +145,13 @@ _PyObject_INIT(PyObject *op, PyTypeObject *typeobj)
     if (PyType_GetFlags(typeobj) & Py_TPFLAGS_HEAPTYPE) {
         Py_INCREF(typeobj);
     }
+
+    // 引用计数置为1
     _Py_NewReference(op);
     return op;
 }
 
+// 为对象初始化类型指针type
 #define PyObject_INIT(op, typeobj) \
     _PyObject_INIT(_PyObject_CAST(op), (typeobj))
 

@@ -464,7 +464,10 @@ PyAPI_FUNC(void) _Py_PrintReferenceAddresses(FILE *);
 PyAPI_FUNC(void) _Py_AddToAllObjects(PyObject *, int force);
 #else
 /* Without Py_TRACE_REFS, there's little enough to do that we expand code
-   inline. */
+   inline.
+    接收一个对象，将其引用计数设置为1，用于新创建的对象。此外我们在定义里面还看到了一个宏Py_REFCNT，这是用来获取对象引用计数的，
+    当然除了Py_REFCNT之外，我们之前还见到了一个宏叫Py_TYPE，这是专门获取对象的类型的
+   */
 static inline void _Py_NewReference(PyObject *op)
 {
     if (_Py_tracemalloc_config.tracing) {
