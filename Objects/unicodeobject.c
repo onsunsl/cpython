@@ -1302,6 +1302,7 @@ _PyUnicode_Dump(PyObject *op)
 }
 #endif
 
+/* 为Unicode对象分配内存, 返回内存指针 */
 PyObject *
 PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar)
 {

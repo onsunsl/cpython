@@ -80,16 +80,24 @@ typedef long stwodigits; /* signed variant of twodigits */
 
    CAUTION:  Generic code manipulating subtypes of PyVarObject has to
    aware that ints abuse  ob_size's sign bit.
+   Py 里的整型内存结构 4byte 计数器 + 4byte 类型指针 + 4 byte元素个数 + 实际的整型数值
+   0~65535 2字节
+   65536 + 2字节
 */
 
 struct _longobject {
+
+    // PyObject ob_base;    含对象引用计数`ob_refcnt` 和对象类型指针`ob_type`
+    // Py_ssize_t ob_size;  元素个数（这里指的是ob_digit的个数）
     PyObject_VAR_HEAD
+
+    // digit 32位机 unsigned short  2字节 / 64位机 unsigned int 4字节 是绝对数值
     digit ob_digit[1];
 };
 
 PyAPI_FUNC(PyLongObject *) _PyLong_New(Py_ssize_t);
 
-/* Return a copy of src. */
+/* Return a copy of src. 针对py int的深度拷贝 */
 PyAPI_FUNC(PyObject *) _PyLong_Copy(PyLongObject *src);
 
 #ifdef __cplusplus

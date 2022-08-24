@@ -1,13 +1,13 @@
 #ifndef Py_PYMACRO_H
 #define Py_PYMACRO_H
 
-/* Minimum value between x and y */
+/* Minimum value between x and y 两数最小值 */
 #define Py_MIN(x, y) (((x) > (y)) ? (y) : (x))
 
-/* Maximum value between x and y */
+/* Maximum value between x and y 两数最大值 */
 #define Py_MAX(x, y) (((x) > (y)) ? (x) : (y))
 
-/* Absolute value of the number x */
+/* Absolute value of the number x  取绝对值 */
 #define Py_ABS(x) ((x) < 0 ? -(x) : (x))
 
 #define _Py_XSTRINGIFY(x) #x

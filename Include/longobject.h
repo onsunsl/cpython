@@ -5,12 +5,13 @@ extern "C" {
 #endif
 
 
-/* Long (arbitrary precision) integer object interface */
+/* Long (arbitrary precision) integer object interface Py不限长度的整型int对象接口 */
 
 typedef struct _longobject PyLongObject; /* Revealed in longintrepr.h */
 
 PyAPI_DATA(PyTypeObject) PyLong_Type;
 
+// int 对象类型检查
 #define PyLong_Check(op) \
         PyType_FastSubclass(Py_TYPE(op), Py_TPFLAGS_LONG_SUBCLASS)
 #define PyLong_CheckExact(op) (Py_TYPE(op) == &PyLong_Type)
@@ -89,6 +90,7 @@ PyAPI_DATA(unsigned char) _PyLong_DigitValue[256];
 PyAPI_FUNC(double) _PyLong_Frexp(PyLongObject *a, Py_ssize_t *e);
 #endif
 
+/* py int 转 c double */
 PyAPI_FUNC(double) PyLong_AsDouble(PyObject *);
 PyAPI_FUNC(PyObject *) PyLong_FromVoidPtr(void *);
 PyAPI_FUNC(void *) PyLong_AsVoidPtr(PyObject *);

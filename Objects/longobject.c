@@ -15,17 +15,23 @@ class int "PyObject *" "&PyLong_Type"
 [clinic start generated code]*/
 /*[clinic end generated code: output=da39a3ee5e6b4b0d input=ec0275e3422a36e3]*/
 
+// 常用小型整数对象池 -5 ~ 257 (开机已经初始化到内存)
 #ifndef NSMALLPOSINTS
-#define NSMALLPOSINTS           257
+#define NSMALLPOSINTS           257  // 常用小型整数对象池最大值
 #endif
 #ifndef NSMALLNEGINTS
-#define NSMALLNEGINTS           5
+#define NSMALLNEGINTS           5   // 常用小型整数对象池最大值 -5
 #endif
 
 _Py_IDENTIFIER(little);
 _Py_IDENTIFIER(big);
 
-/* convert a PyLong of size 1, 0 or -1 to an sdigit */
+/* convert a PyLong of size 1, 0 or -1 to an sdigit
+ * 根据size(代表int符号位)取 int的sdigit值
+ *  size <  0  int 为负值
+ *  size == 0  int 为0值
+ *  size >  0  int 为正值
+ */
 #define MEDIUM_VALUE(x) (assert(-1 <= Py_SIZE(x) && Py_SIZE(x) <= 1),   \
          Py_SIZE(x) < 0 ? -(sdigit)(x)->ob_digit[0] :   \
              (Py_SIZE(x) == 0 ? (sdigit)0 :                             \
@@ -39,6 +45,8 @@ PyObject *_PyLong_One = NULL;
    can be shared.
    The integers that are preallocated are those in the range
    -NSMALLNEGINTS (inclusive) to NSMALLPOSINTS (not inclusive).
+   高频常用的小整数对象池子，在Py初始化后已经创建并存入small_ints， 可以
+   避免高频内存申请和释放，默认是-5 ~ 256,
 */
 static PyLongObject small_ints[NSMALLNEGINTS + NSMALLPOSINTS];
 #ifdef COUNT_ALLOCS
@@ -258,6 +266,8 @@ _PyLong_FromNbIndexOrNbInt(PyObject *integral)
 #define MAX_LONG_DIGITS \
     ((PY_SSIZE_T_MAX - offsetof(PyLongObject, ob_digit))/sizeof(digit))
 
+
+/* 整形内存对象申请 */
 PyLongObject *
 _PyLong_New(Py_ssize_t size)
 {
@@ -281,6 +291,7 @@ _PyLong_New(Py_ssize_t size)
     return (PyLongObject*)PyObject_INIT_VAR(result, &PyLong_Type, size);
 }
 
+/* 针对py int的深度拷贝（new 一个新的）  */
 PyObject *
 _PyLong_Copy(PyLongObject *src)
 {
@@ -304,8 +315,11 @@ _PyLong_Copy(PyLongObject *src)
     return (PyObject *)result;
 }
 
-/* Create a new int object from a C long int */
-
+/* Create a new int object from a C long int
+ * 创建c的long, ing 到python 的int obj
+ *  1. 是高频小整数时候，直接返回内存池里对象指针
+ *  2. 非高频小整数时候，结果会创建新的内存块
+ */
 PyObject *
 PyLong_FromLong(long ival)
 {
@@ -315,6 +329,7 @@ PyLong_FromLong(long ival)
     int ndigits = 0;
     int sign;
 
+    // 是高频小整数时候，直接返回内存池里对象指针
     CHECK_SMALL_INT(ival);
 
     if (ival < 0) {
@@ -1740,7 +1755,8 @@ divrem1(PyLongObject *a, digit n, digit *prem)
 
 /* Convert an integer to a base 10 string.  Returns a new non-shared
    string.  (Return value is non-shared so that callers can modify the
-   returned value if necessary.) */
+   returned value if necessary.)
+   把py int 对象转 unicode str(内部方法) */
 
 static int
 long_to_decimal_string_internal(PyObject *aa,
@@ -1922,6 +1938,7 @@ long_to_decimal_string_internal(PyObject *aa,
     return 0;
 }
 
+/* Py int 对象转 str */
 static PyObject *
 long_to_decimal_string(PyObject *aa)
 {
@@ -3019,7 +3036,9 @@ _PyLong_Frexp(PyLongObject *a, Py_ssize_t *e)
 }
 
 /* Get a C double from an int object.  Rounds to the nearest double,
-   using the round-half-to-even rule in the case of a tie. */
+   using the round-half-to-even rule in the case of a tie.
+   把py int obj 转 c double
+   */
 
 double
 PyLong_AsDouble(PyObject *v)
@@ -3052,7 +3071,9 @@ PyLong_AsDouble(PyObject *v)
 }
 
 /* Methods */
-
+/* Py int 类型比较
+ * 1表示a > b, -1表示a < b, 0表示a == b
+ */
 static int
 long_compare(PyLongObject *a, PyLongObject *b)
 {
@@ -3065,14 +3086,20 @@ long_compare(PyLongObject *a, PyLongObject *b)
         Py_ssize_t i = Py_ABS(Py_SIZE(a));
         while (--i >= 0 && a->ob_digit[i] == b->ob_digit[i])
             ;
+        // digit数组内容全部一样 说明a=b
         if (i < 0)
             sign = 0;
+
+        // 取digit数组不一样的比较
         else {
             sign = (sdigit)a->ob_digit[i] - (sdigit)b->ob_digit[i];
             if (Py_SIZE(a) < 0)
                 sign = -sign;
         }
     }
+    // sign < 0 返回 -1 说明 a < b
+    // sing > 0 返回 +1 说明 a > b
+    // sign = 0 返回  0 说明 a = b
     return sign < 0 ? -1 : sign > 0 ? 1 : 0;
 }
 
@@ -3236,13 +3263,16 @@ x_sub(PyLongObject *a, PyLongObject *b)
     return long_normalize(z);
 }
 
+/* py int 相加 */
 static PyObject *
 long_add(PyLongObject *a, PyLongObject *b)
 {
     PyLongObject *z;
 
+    // 类型检查
     CHECK_BINOP(a, b);
 
+    // a, b 均是 0 ~ 2^32 以内的加法
     if (Py_ABS(Py_SIZE(a)) <= 1 && Py_ABS(Py_SIZE(b)) <= 1) {
         return PyLong_FromLong(MEDIUM_VALUE(a) + MEDIUM_VALUE(b));
     }
@@ -3270,6 +3300,7 @@ long_add(PyLongObject *a, PyLongObject *b)
     return (PyObject *)z;
 }
 
+/* py int 相减 */
 static PyObject *
 long_sub(PyLongObject *a, PyLongObject *b)
 {
@@ -4861,6 +4892,7 @@ long_or(PyObject *a, PyObject *b)
     return c;
 }
 
+/* py int 类型拷贝 */
 static PyObject *
 long_long(PyObject *v)
 {
@@ -5078,13 +5110,16 @@ error:
     return NULL;
 }
 
+// Py int obj 转 float obj
 static PyObject *
 long_float(PyObject *v)
 {
     double result;
+    // py int 转 c double
     result = PyLong_AsDouble(v);
     if (result == -1.0 && PyErr_Occurred())
         return NULL;
+    // c double 转 py float
     return PyFloat_FromDouble(result);
 }
 
@@ -5617,6 +5652,7 @@ long_long_meth(PyObject *self, PyObject *Py_UNUSED(ignored))
     return long_long(self);
 }
 
+// int obj .py层暴露的接口
 static PyMethodDef long_methods[] = {
     {"conjugate",       long_long_meth, METH_NOARGS,
      "Returns self, the complex conjugate of any int."},
@@ -5675,6 +5711,7 @@ Base 0 means to interpret the base from the string as an integer literal.\n\
 >>> int('0b100', base=0)\n\
 4");
 
+/* py int 数值对象的行为函数指针集合 */
 static PyNumberMethods long_as_number = {
     (binaryfunc)long_add,       /*nb_add*/
     (binaryfunc)long_sub,       /*nb_subtract*/
@@ -5694,7 +5731,7 @@ static PyNumberMethods long_as_number = {
     long_or,                    /*nb_or*/
     long_long,                  /*nb_int*/
     0,                          /*nb_reserved*/
-    long_float,                 /*nb_float*/
+    long_float,                 /*nb_float  Py int obj 转 float obj */
     0,                          /* nb_inplace_add */
     0,                          /* nb_inplace_subtract */
     0,                          /* nb_inplace_multiply */
@@ -5712,21 +5749,24 @@ static PyNumberMethods long_as_number = {
     long_long,                  /* nb_index */
 };
 
+/* Py整形 obj 的类型描述值
+ *
+ */
 PyTypeObject PyLong_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
     "int",                                      /* tp_name */
     offsetof(PyLongObject, ob_digit),           /* tp_basicsize */
-    sizeof(digit),                              /* tp_itemsize */
-    0,                                          /* tp_dealloc */
+    sizeof(digit),                              /* tp_itemsize py int 类型大小 */
+    0,                                          /* tp_dealloc 没有析构函数？ */
     0,                                          /* tp_vectorcall_offset */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
     0,                                          /* tp_as_async */
-    long_to_decimal_string,                     /* tp_repr */
-    &long_as_number,                            /* tp_as_number */
+    long_to_decimal_string,                     /* tp_repr py int 转 str*/
+    &long_as_number,                            /* tp_as_number 数值行为方法集合 */
     0,                                          /* tp_as_sequence */
     0,                                          /* tp_as_mapping */
-    (hashfunc)long_hash,                        /* tp_hash */
+    (hashfunc)long_hash,                        /* tp_hash py int 对象哈希计算函数 */
     0,                                          /* tp_call */
     0,                                          /* tp_str */
     PyObject_GenericGetAttr,                    /* tp_getattro */
@@ -5741,7 +5781,7 @@ PyTypeObject PyLong_Type = {
     0,                                          /* tp_weaklistoffset */
     0,                                          /* tp_iter */
     0,                                          /* tp_iternext */
-    long_methods,                               /* tp_methods */
+    long_methods,                               /* tp_methods 给.py 层暴露接口 */
     0,                                          /* tp_members */
     long_getset,                                /* tp_getset */
     0,                                          /* tp_base */
@@ -5751,7 +5791,7 @@ PyTypeObject PyLong_Type = {
     0,                                          /* tp_dictoffset */
     0,                                          /* tp_init */
     0,                                          /* tp_alloc */
-    long_new,                                   /* tp_new */
+    long_new,                                   /* tp_new 构造函数 */
     PyObject_Del,                               /* tp_free */
 };
 

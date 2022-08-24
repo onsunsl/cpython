@@ -455,7 +455,8 @@ enum PyUnicode_Kind {
 
 /* With PEP 393, this is the recommended way to allocate a new unicode object.
    This function will allocate the object and its buffer in a single memory
-   block.  Objects created using this function are not resizable. */
+   block.  Objects created using this function are not resizable.
+   为Unicode对象分配内存 */
 PyAPI_FUNC(PyObject*) PyUnicode_New(
     Py_ssize_t size,            /* Number of code points in the new string */
     Py_UCS4 maxchar             /* maximum code point value in the string */
