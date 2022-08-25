@@ -1,5 +1,12 @@
 
-/* Bytes (String) object interface */
+/* Bytes (String) object interface
+ *
+ * python bytes 对象接口
+ * bytes -> decode -> str
+ * bytes <- encode <- str
+ * bytes <-> 文件存储
+ * bytes <-> 网络收发
+ */
 
 #ifndef Py_BYTESOBJECT_H
 #define Py_BYTESOBJECT_H
@@ -27,10 +34,19 @@ functions should be applied to nil objects.
 /* Caching the hash (ob_shash) saves recalculation of a string's hash value.
    This significantly speeds up dict lookups. */
 
+/*
+ * python bytes 类型内存结构
+ */
 #ifndef Py_LIMITED_API
 typedef struct {
+    // PyObject ob_base;    含对象引用计数`ob_refcnt` 和对象类型指针`ob_type`
+    // Py_ssize_t ob_size;  元素个数（这里指的是ob_digit的个数）
     PyObject_VAR_HEAD
+
+    //哈希值 long 方便查找
     Py_hash_t ob_shash;
+
+    // bytes 实际内容
     char ob_sval[1];
 
     /* Invariants:

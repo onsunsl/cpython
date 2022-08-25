@@ -22,6 +22,9 @@ class bytes "PyBytesObject *" "&PyBytes_Type"
 Py_ssize_t _Py_null_strings, _Py_one_strings;
 #endif
 
+/* 单个字节的bytes对象缓存， 在单个字符对象的访问中得以加速，避免内存频繁申请和释放
+ * 默认可以换256 个 对象
+ */
 static PyBytesObject *characters[UCHAR_MAX + 1];
 static PyBytesObject *nullstring;
 
@@ -98,15 +101,21 @@ _PyBytes_FromSize(Py_ssize_t size, int use_calloc)
     return (PyObject *) op;
 }
 
+/* 根据c char* 和长度转 bytes 对象
+ */
 PyObject *
 PyBytes_FromStringAndSize(const char *str, Py_ssize_t size)
 {
     PyBytesObject *op;
+
+    // 长度拦截
     if (size < 0) {
         PyErr_SetString(PyExc_SystemError,
             "Negative size passed to PyBytes_FromStringAndSize");
         return NULL;
     }
+
+    // 一个字节的字符转bytes对象, 而且字符已经在缓存池characters里
     if (size == 1 && str != NULL &&
         (op = characters[*str & UCHAR_MAX]) != NULL)
     {
@@ -117,14 +126,17 @@ PyBytes_FromStringAndSize(const char *str, Py_ssize_t size)
         return (PyObject *)op;
     }
 
+    // 根据size创建bytes对象内存
     op = (PyBytesObject *)_PyBytes_FromSize(size, 0);
     if (op == NULL)
         return NULL;
     if (str == NULL)
         return (PyObject *) op;
 
+    // 拷贝char 字符到 bytes 对象内
     memcpy(op->ob_sval, str, size);
-    /* share short strings */
+
+    /* share short strings 缓存单个字符的bytes对象 */
     if (size == 1) {
         characters[*str & UCHAR_MAX] = op;
         Py_INCREF(op);
@@ -1720,14 +1732,25 @@ bytes_buffer_getbuffer(PyBytesObject *self, Py_buffer *view, int flags)
                              1, flags);
 }
 
+// bytes 对应序列的操作行为函数列表
 static PySequenceMethods bytes_as_sequence = {
+
+    // 对应python len
     (lenfunc)bytes_length, /*sq_length*/
+
+    // 合并两个bytes
     (binaryfunc)bytes_concat, /*sq_concat*/
+
+    // 将序列重复多次
     (ssizeargfunc)bytes_repeat, /*sq_repeat*/
+
+    // 切片对象
     (ssizeargfunc)bytes_item, /*sq_item*/
     0,                  /*sq_slice*/
     0,                  /*sq_ass_item*/
     0,                  /*sq_ass_slice*/
+
+    // 判断某个序列是不是在该序列中，对应python a in b
     (objobjproc)bytes_contains /*sq_contains*/
 };
 
@@ -2451,7 +2474,7 @@ bytes_getnewargs(PyBytesObject *v, PyObject *Py_UNUSED(ignored))
     return Py_BuildValue("(y#)", v->ob_sval, Py_SIZE(v));
 }
 
-
+/* 给.py 层暴露的接口函数 */
 static PyMethodDef
 bytes_methods[] = {
     {"__getnewargs__",          (PyCFunction)bytes_getnewargs,  METH_NOARGS},
@@ -2512,6 +2535,9 @@ bytes_methods[] = {
     {NULL,     NULL}                         /* sentinel */
 };
 
+/*
+ * bytes 作%数值运算 这里变成了格式化输出， 类似%d, %f
+ */
 static PyObject *
 bytes_mod(PyObject *self, PyObject *arg)
 {
@@ -2522,11 +2548,12 @@ bytes_mod(PyObject *self, PyObject *arg)
                              arg, 0);
 }
 
+// bytes 作数值操作行为
 static PyNumberMethods bytes_as_number = {
-    0,              /*nb_add*/
-    0,              /*nb_subtract*/
-    0,              /*nb_multiply*/
-    bytes_mod,      /*nb_remainder*/
+    0,              /*nb_add + */
+    0,              /*nb_subtract - */
+    0,              /*nb_multiply * */
+    bytes_mod,      /*nb_remainder % */
 };
 
 static PyObject *
@@ -2877,8 +2904,13 @@ Construct an immutable array of bytes from:\n\
 
 static PyObject *bytes_iter(PyObject *seq);
 
+/*
+ * Python bytes 对象类型描述结构体值
+ */
 PyTypeObject PyBytes_Type = {
     PyVarObject_HEAD_INIT(&PyType_Type, 0)
+
+    // 名称
     "bytes",
     PyBytesObject_SIZE,
     sizeof(char),
@@ -2888,25 +2920,25 @@ PyTypeObject PyBytes_Type = {
     0,                                          /* tp_setattr */
     0,                                          /* tp_as_async */
     (reprfunc)bytes_repr,                       /* tp_repr */
-    &bytes_as_number,                           /* tp_as_number */
-    &bytes_as_sequence,                         /* tp_as_sequence */
-    &bytes_as_mapping,                          /* tp_as_mapping */
-    (hashfunc)bytes_hash,                       /* tp_hash */
+    &bytes_as_number,                           /* tp_as_number 作序列数值的操作行为函数集合*/
+    &bytes_as_sequence,                         /* tp_as_sequence 作序列的操作行为函数集合*/
+    &bytes_as_mapping,                          /* tp_as_mapping 作map的操作行为函数集合 */
+    (hashfunc)bytes_hash,                       /* tp_hash hash 值 */
     0,                                          /* tp_call */
-    bytes_str,                                  /* tp_str */
+    bytes_str,                                  /* tp_str 转字符串 */
     PyObject_GenericGetAttr,                    /* tp_getattro */
     0,                                          /* tp_setattro */
     &bytes_as_buffer,                           /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE |
         Py_TPFLAGS_BYTES_SUBCLASS,              /* tp_flags */
-    bytes_doc,                                  /* tp_doc */
+    bytes_doc,                                  /* tp_doc 文档 */
     0,                                          /* tp_traverse */
     0,                                          /* tp_clear */
-    (richcmpfunc)bytes_richcompare,             /* tp_richcompare */
+    (richcmpfunc)bytes_richcompare,             /* tp_richcompare 比较 */
     0,                                          /* tp_weaklistoffset */
     bytes_iter,                                 /* tp_iter */
     0,                                          /* tp_iternext */
-    bytes_methods,                              /* tp_methods */
+    bytes_methods,                              /* tp_methods  给.py 层暴露的接口 */
     0,                                          /* tp_members */
     0,                                          /* tp_getset */
     &PyBaseObject_Type,                         /* tp_base */
@@ -2916,8 +2948,8 @@ PyTypeObject PyBytes_Type = {
     0,                                          /* tp_dictoffset */
     0,                                          /* tp_init */
     0,                                          /* tp_alloc */
-    bytes_new,                                  /* tp_new */
-    PyObject_Del,                               /* tp_free */
+    bytes_new,                                  /* tp_new 构造函数 */
+    PyObject_Del,                               /* tp_free 释放函数*/
 };
 
 void
@@ -3160,7 +3192,7 @@ PyTypeObject PyBytesIter_Type = {
     sizeof(striterobject),                      /* tp_basicsize */
     0,                                          /* tp_itemsize */
     /* methods */
-    (destructor)striter_dealloc,                /* tp_dealloc */
+    (destructor)striter_dealloc,                /* tp_dealloc 虚构函数 */
     0,                                          /* tp_vectorcall_offset */
     0,                                          /* tp_getattr */
     0,                                          /* tp_setattr */
@@ -3181,9 +3213,9 @@ PyTypeObject PyBytesIter_Type = {
     0,                                          /* tp_clear */
     0,                                          /* tp_richcompare */
     0,                                          /* tp_weaklistoffset */
-    PyObject_SelfIter,                          /* tp_iter */
-    (iternextfunc)striter_next,                 /* tp_iternext */
-    striter_methods,                            /* tp_methods */
+    PyObject_SelfIter,                          /* tp_iter 迭代对象器 */
+    (iternextfunc)striter_next,                 /* tp_iternext 迭代下一个值 */
+    striter_methods,                            /* tp_methods 给.py暴露的接口 */
     0,
 };
 
