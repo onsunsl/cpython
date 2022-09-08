@@ -126,9 +126,43 @@ typedef int Py_ssize_clean_t;
 /* Largest possible value of size_t. */
 #define PY_SIZE_MAX SIZE_MAX
 
-/* Largest positive value of type Py_ssize_t. */
+/* Largest positive value of type Py_ssize_t.
+ * 编码参考： https://www.cnblogs.com/zhangziqiu/archive/2011/03/30/ComputerCode.html
+ *  typedef _W64 unsigned int   size_t;
+ *  typedef _W64          int   ssize_t;
+ *  typedef ssize_t             Py_ssize_t;
+ *
+ * CPU 对应的字长的最大值
+ * 8位机里 -1 源码： 1000 0001
+ *           反码： 1111 1110  符号位不变，其余取反
+ *           补码： 1111 1111  反码+1
+ * 计算机内存是使用补码存储，所以-1的计算机值是0xff
+ *
+ * 左移： 负数 会丢符号位， 低位补0
+ *       正数 同上
+ *
+ * 右移： 负数 高位补1
+ *       正数 高位补0
+ * 所以：(unsigned int)0xff >> 1 = 0x7f
+ *      PY_SSIZE_T_MAX = (int)(0x7f) = +127
+ *
+ * 32位机：
+ *      PY_SSIZE_T_MAX = (int)(0x7fffffff)
+ */
 #define PY_SSIZE_T_MAX ((Py_ssize_t)(((size_t)-1)>>1))
-/* Smallest negative value of type Py_ssize_t. */
+
+
+/* Smallest negative value of type Py_ssize_t.
+ *
+ * 8位机：
+ * -PY_SSIZE_T_MAX     = -127 = 原码 1111 1111 = 反码 1000 0000 = 补码 1000 0001 = 0x81
+ * -PY_SSIZE_T_MAX - 1 = -128 = 补码 1000 0000 = 0x80
+ * 0x80 = -128
+ *
+ * 32位机：
+ * 0x80000000
+ */
+
 #define PY_SSIZE_T_MIN (-PY_SSIZE_T_MAX-1)
 
 /* PY_FORMAT_SIZE_T is a platform-specific modifier for use in a printf

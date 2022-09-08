@@ -206,9 +206,12 @@ extern "C" {
 */
 static PyObject *interned = NULL;
 
-/* The empty Unicode object is shared to improve performance. */
+/* The empty Unicode object is shared to improve performance.
+ * 空串对象,它是全局共享的
+ */
 static PyObject *unicode_empty = NULL;
 
+// 空对象增加引用(如果没有创建一个新的）
 #define _Py_INCREF_UNICODE_EMPTY()                      \
     do {                                                \
         if (unicode_empty != NULL)                      \
@@ -222,6 +225,7 @@ static PyObject *unicode_empty = NULL;
         }                                               \
     } while (0)
 
+// 返回一个空对象
 #define _Py_RETURN_UNICODE_EMPTY()                      \
     do {                                                \
         _Py_INCREF_UNICODE_EMPTY();                     \
@@ -278,7 +282,9 @@ unicode_decode_utf8(const char *s, Py_ssize_t size,
 static _Py_Identifier *static_strings = NULL;
 
 /* Single character Unicode strings in the Latin-1 range are being
-   shared as well. */
+ * shared as well.
+ * 0x00 ~ 0xff 之间的拉丁字符集合，单个字符的unicode 缓存池子
+ */
 static PyObject *unicode_latin1[256] = {NULL};
 
 /* Fast detection of the most frequent whitespace characters */
@@ -1302,7 +1308,11 @@ _PyUnicode_Dump(PyObject *op)
 }
 #endif
 
-/* 为Unicode对象分配内存, 返回内存指针 */
+/* 为Unicode对象分配内存, 返回内存指针
+ * @param size 字符串长度
+ * @param maxchar 字符集最大取值
+ * @return 内存地址
+ */
 PyObject *
 PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar)
 {
@@ -1322,24 +1332,36 @@ PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar)
 
     is_ascii = 0;
     is_sharing = 0;
+
+    // 默认的str unicode 对象结构体长度
     struct_size = sizeof(PyCompactUnicodeObject);
+
+    // 标准ascii
     if (maxchar < 128) {
         kind = PyUnicode_1BYTE_KIND;
         char_size = 1;
         is_ascii = 1;
+
+        // 纯ascii 码改小对象结构体长度
         struct_size = sizeof(PyASCIIObject);
     }
+
     else if (maxchar < 256) {
         kind = PyUnicode_1BYTE_KIND;
         char_size = 1;
     }
+
+    // 2字节的unicode
     else if (maxchar < 65536) {
         kind = PyUnicode_2BYTE_KIND;
         char_size = 2;
         if (sizeof(wchar_t) == 2)
             is_sharing = 1;
     }
+
+    // 4字节的unicode
     else {
+        // 非法unicode
         if (maxchar > MAX_UNICODE) {
             PyErr_SetString(PyExc_SystemError,
                             "invalid maximum character passed to PyUnicode_New");
@@ -1357,12 +1379,17 @@ PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar)
                         "Negative size passed to PyUnicode_New");
         return NULL;
     }
+
+    // (PY_SSIZE_T_MAX - struct_size) 扣除unicode结构体自身的长度
+    // ((PY_SSIZE_T_MAX - struct_size) / char_size - 1) 剩余长度 / 字节类型长度 = 可存长度
+    // 新申请内存长度 必须小于可用长度
     if (size > ((PY_SSIZE_T_MAX - struct_size) / char_size - 1))
         return PyErr_NoMemory();
 
     /* Duplicated allocation code from _PyObject_New() instead of a call to
      * PyObject_New() so we are able to allocate space for the object and
      * it's data buffer.
+     * 内存申请长度 = 结构体长度 + 字符长度 * 字符宽度 + '\0' * 字符宽度
      */
     obj = (PyObject *) PyObject_MALLOC(struct_size + (size + 1) * char_size);
     if (obj == NULL)
@@ -1371,11 +1398,15 @@ PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar)
     if (obj == NULL)
         return NULL;
 
+    // 转unicode 对象指针
     unicode = (PyCompactUnicodeObject *)obj;
     if (is_ascii)
+        // 纯ascci 码按 PyASCIIObject 向后偏移一个结构体
         data = ((PyASCIIObject*)obj) + 1;
     else
+        // 混合字符的按PyCompactUnicodeObject向后偏移一个结构体
         data = unicode + 1;
+
     _PyUnicode_LENGTH(unicode) = size;
     _PyUnicode_HASH(unicode) = -1;
     _PyUnicode_STATE(unicode).interned = 0;
@@ -1383,6 +1414,8 @@ PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar)
     _PyUnicode_STATE(unicode).compact = 1;
     _PyUnicode_STATE(unicode).ready = 1;
     _PyUnicode_STATE(unicode).ascii = is_ascii;
+
+    // 对应类型内存的状态初始化
     if (is_ascii) {
         ((char*)data)[size] = 0;
         _PyUnicode_WSTR(unicode) = NULL;
@@ -1609,6 +1642,13 @@ _copy_characters(PyObject *to, Py_ssize_t to_start,
     return 0;
 }
 
+/* unucode 对象拷贝
+ * @param to           目标对象内存指针
+ * @param to_start     目标对象起始位置（偏移位置）
+ * @param from         原始对象内存指针
+ * @param from_start   原始对象起始位置（偏移位置）
+ * @param how_many     拷贝长度
+ */
 void
 _PyUnicode_FastCopyCharacters(
     PyObject *to, Py_ssize_t to_start,
@@ -1897,14 +1937,20 @@ unicode_is_singleton(PyObject *unicode)
 }
 #endif
 
+/* str 对象是否可以被修改 */
 static int
 unicode_modifiable(PyObject *unicode)
 {
     assert(_PyUnicode_CHECK(unicode));
+    // 被引用过的不可修改
     if (Py_REFCNT(unicode) != 1)
         return 0;
+
+    // 初始化过哈希的不可修改
     if (_PyUnicode_HASH(unicode) != -1)
         return 0;
+
+    // 维护过的不可修改
     if (PyUnicode_CHECK_INTERNED(unicode))
         return 0;
     if (!PyUnicode_CheckExact(unicode))
@@ -2031,10 +2077,12 @@ unicode_write_cstr(PyObject *unicode, Py_ssize_t index,
     }
 }
 
+// 根据c字符取取对应py对应的unicode对象指针
 static PyObject*
 get_latin1_char(unsigned char ch)
 {
     PyObject *unicode = unicode_latin1[ch];
+    // 如果缓存不存在创建并缓存起来
     if (!unicode) {
         unicode = PyUnicode_New(1, ch);
         if (!unicode)
@@ -2043,10 +2091,12 @@ get_latin1_char(unsigned char ch)
         assert(_PyUnicode_CheckConsistency(unicode, 1));
         unicode_latin1[ch] = unicode;
     }
+    // 增加缓存
     Py_INCREF(unicode);
     return unicode;
 }
 
+// 跟c unicode 值转py unicode对象
 static PyObject*
 unicode_char(Py_UCS4 ch)
 {
@@ -2054,13 +2104,16 @@ unicode_char(Py_UCS4 ch)
 
     assert(ch <= MAX_UNICODE);
 
+    // 拉丁符集合之内直接取缓存
     if (ch < 256)
         return get_latin1_char(ch);
 
+    // new 新的内存块
     unicode = PyUnicode_New(1, ch);
     if (unicode == NULL)
         return NULL;
 
+    // 根据unicode字宽复制
     assert(PyUnicode_KIND(unicode) != PyUnicode_1BYTE_KIND);
     if (PyUnicode_KIND(unicode) == PyUnicode_2BYTE_KIND) {
         PyUnicode_2BYTE_DATA(unicode)[0] = (Py_UCS2)ch;
@@ -9943,6 +9996,7 @@ PyUnicode_Join(PyObject *separator, PyObject *seq)
 
     /* NOTE: the following code can't call back into Python code,
      * so we are sure that fseq won't be mutated.
+     * 转list 或者tuple
      */
 
     items = PySequence_Fast_ITEMS(fseq);
@@ -9952,6 +10006,11 @@ PyUnicode_Join(PyObject *separator, PyObject *seq)
     return res;
 }
 
+/*  拼接数值元素成串
+ *  @param separator 分隔符
+ *  @param items     待拼接的元素
+ *  @param sqllen    待拼接的元素个数
+ */
 PyObject *
 _PyUnicode_JoinArray(PyObject *separator, PyObject *const *items, Py_ssize_t seqlen)
 {
@@ -9972,7 +10031,9 @@ _PyUnicode_JoinArray(PyObject *separator, PyObject *const *items, Py_ssize_t seq
         _Py_RETURN_UNICODE_EMPTY();
     }
 
-    /* If singleton sequence with an exact Unicode, return that. */
+    /* If singleton sequence with an exact Unicode, return that.
+     * 单个元素的直接返回
+     */
     last_obj = NULL;
     if (seqlen == 1) {
         if (PyUnicode_CheckExact(items[0])) {
@@ -11278,7 +11339,12 @@ PyUnicode_Contains(PyObject *str, PyObject *substr)
     return result;
 }
 
-/* Concat to string or Unicode object giving a new Unicode object. */
+/* Concat to string or Unicode object giving a new Unicode object.
+ * 拼接两个串成一个新的串
+ * @param left  第一个串对象指针
+ * @param right 第二个串对象指针
+ * @return 新串对象指针
+ */
 
 PyObject *
 PyUnicode_Concat(PyObject *left, PyObject *right)
@@ -11299,12 +11365,13 @@ PyUnicode_Concat(PyObject *left, PyObject *right)
     if (PyUnicode_READY(right) < 0)
         return NULL;
 
-    /* Shortcuts */
+    /* Shortcuts 其中有一个是空的块分支 */
     if (left == unicode_empty)
         return PyUnicode_FromObject(right);
     if (right == unicode_empty)
         return PyUnicode_FromObject(left);
 
+    /* 长度计算 */
     left_len = PyUnicode_GET_LENGTH(left);
     right_len = PyUnicode_GET_LENGTH(right);
     if (left_len > PY_SSIZE_T_MAX - right_len) {
@@ -11314,20 +11381,28 @@ PyUnicode_Concat(PyObject *left, PyObject *right)
     }
     new_len = left_len + right_len;
 
+    /* 确定字符集的最大取值范围 */
     maxchar = PyUnicode_MAX_CHAR_VALUE(left);
     maxchar2 = PyUnicode_MAX_CHAR_VALUE(right);
     maxchar = Py_MAX(maxchar, maxchar2);
 
-    /* Concat the two Unicode strings */
+    /* Concat the two Unicode strings内存申请 */
     result = PyUnicode_New(new_len, maxchar);
     if (result == NULL)
         return NULL;
+
+    /* 先拷贝左侧的串，后拷贝右侧的串到新申请的内存 */
     _PyUnicode_FastCopyCharacters(result, 0, left, 0, left_len);
     _PyUnicode_FastCopyCharacters(result, left_len, right, 0, right_len);
     assert(_PyUnicode_CheckConsistency(result, 1));
     return result;
 }
 
+/* 追加一个unicode串
+ * @param p_lefty 指向已经存在的串对象指针的指针
+ * @param right   追加的串指针
+ * @param return  无
+ */
 void
 PyUnicode_Append(PyObject **p_left, PyObject *right)
 {
@@ -11353,7 +11428,7 @@ PyUnicode_Append(PyObject **p_left, PyObject *right)
     if (PyUnicode_READY(right) == -1)
         goto error;
 
-    /* Shortcuts */
+    /* Shortcuts 快分支 **p_left 是空对象释放并直接取右侧的对象 */
     if (left == unicode_empty) {
         Py_DECREF(left);
         Py_INCREF(right);
@@ -11363,6 +11438,7 @@ PyUnicode_Append(PyObject **p_left, PyObject *right)
     if (right == unicode_empty)
         return;
 
+    /* 超长检查 */
     left_len = PyUnicode_GET_LENGTH(left);
     right_len = PyUnicode_GET_LENGTH(right);
     if (left_len > PY_SSIZE_T_MAX - right_len) {
@@ -11372,6 +11448,7 @@ PyUnicode_Append(PyObject **p_left, PyObject *right)
     }
     new_len = left_len + right_len;
 
+    /* 原串可修改 & 左右字符集一样， 直接拷贝到原串的末尾 */
     if (unicode_modifiable(left)
         && PyUnicode_CheckExact(right)
         && PyUnicode_KIND(right) <= PyUnicode_KIND(left)
@@ -11388,6 +11465,7 @@ PyUnicode_Append(PyObject **p_left, PyObject *right)
         /* copy 'right' into the newly allocated area of 'left' */
         _PyUnicode_FastCopyCharacters(*p_left, left_len, right, 0, right_len);
     }
+    // 创建新的内存按最大字宽拷贝 到内存
     else {
         maxchar = PyUnicode_MAX_CHAR_VALUE(left);
         maxchar2 = PyUnicode_MAX_CHAR_VALUE(right);
@@ -11647,6 +11725,11 @@ unicode_find(PyObject *self, PyObject *args)
     return PyLong_FromSsize_t(result);
 }
 
+/* 取索引对应的unicode字符 如: a = "abc"[1]
+ * @param self  字符对象指针
+ * @param index  索引值
+ * @return 对应字符对象指针
+ */
 static PyObject *
 unicode_getitem(PyObject *self, Py_ssize_t index)
 {
@@ -11661,6 +11744,7 @@ unicode_getitem(PyObject *self, Py_ssize_t index)
     if (PyUnicode_READY(self) == -1) {
         return NULL;
     }
+    // index 越界检查
     if (index < 0 || index >= PyUnicode_GET_LENGTH(self)) {
         PyErr_SetString(PyExc_IndexError, "string index out of range");
         return NULL;
@@ -13908,6 +13992,7 @@ unicode_getnewargs(PyObject *v, PyObject *Py_UNUSED(ignored))
     return Py_BuildValue("(N)", copy);
 }
 
+/* str 在Python 的操作方法集合 */
 static PyMethodDef unicode_methods[] = {
     UNICODE_ENCODE_METHODDEF
     UNICODE_REPLACE_METHODDEF
@@ -13973,22 +14058,24 @@ unicode_mod(PyObject *v, PyObject *w)
     return PyUnicode_Format(v, w);
 }
 
+/* python str 做数值操作方法 */
 static PyNumberMethods unicode_as_number = {
-    0,              /*nb_add*/
-    0,              /*nb_subtract*/
-    0,              /*nb_multiply*/
-    unicode_mod,            /*nb_remainder*/
+    0,              /*nb_add + */
+    0,              /*nb_subtract - */
+    0,              /*nb_multiply * */
+    unicode_mod,            /*nb_remainder % 用于格式化*/
 };
 
+/* python str 做序列操作方法 */
 static PySequenceMethods unicode_as_sequence = {
-    (lenfunc) unicode_length,       /* sq_length */
-    PyUnicode_Concat,           /* sq_concat */
-    (ssizeargfunc) unicode_repeat,  /* sq_repeat */
-    (ssizeargfunc) unicode_getitem,     /* sq_item */
+    (lenfunc) unicode_length,       /* sq_length len("abc") */
+    PyUnicode_Concat,           /* sq_concat "abc" + "bcd" */
+    (ssizeargfunc) unicode_repeat,  /* sq_repeat "abc" * 3 */
+    (ssizeargfunc) unicode_getitem,     /* sq_item "abc"[2] */
     0,                  /* sq_slice */
     0,                  /* sq_ass_item */
     0,                  /* sq_ass_slice */
-    PyUnicode_Contains,         /* sq_contains */
+    PyUnicode_Contains,         /* sq_contains "a" in "abc" */
 };
 
 static PyObject*

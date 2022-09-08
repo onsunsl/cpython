@@ -84,11 +84,13 @@ extern "C" {
 /* ASCII-only strings created through PyUnicode_New use the PyASCIIObject
    structure. state.ascii and state.compact are set, and the data
    immediately follow the structure. utf8_length and wstr_length can be found
-   in the length field; the utf8 pointer is equal to the data pointer. */
+   in the length field; the utf8 pointer is equal to the data pointer.
+   纯Ascii类型存储对象结构
+ */
 typedef struct {
-    /* There are 4 forms of Unicode strings:
+    /* There are 4 forms of Unicode strings 字符的4中形式:
 
-       - compact ascii:
+       - compact ascii 紧凑型ascii吗:
 
          * structure = PyASCIIObject
          * test: PyUnicode_IS_COMPACT_ASCII(op)
@@ -158,10 +160,33 @@ typedef struct {
        when PyUnicode_READY() is called.
 
        See also _PyUnicode_CheckConsistency().
+
+                      32bit os        64bit os(内存须8字节对齐)     名称
+          +----------+
+    /     | ob_refcnt|      4byte             8byte              引用计数
+ PyObject +----------+
+    \     | ob_type  |      4byte             8byte              类型描述结构体指针
+          +----------+
+          | length   |      4byte             8byte              字符串长度
+          +----------+
+          | hash     |      4byte             8byte              字符串哈希值
+          +----------+
+          | state    |      4byte             8byte              存储结构描述状态位
+          +----------+
+          | wstr     |      4byte             8byte              字符串buf指针
+          +----------+
+          | '\n'     |      1byte             1byte              结束符
+          +----------+
+                            25byte             49byte
+
+        总长度是ascii码字符串长度 * 1 + 25或49 bytes, 例如python里 s = 'hello'
+            1. 32bit  占用内存 5 * 1 + 25 = 30 byte
+            2. 64bit  占用内存 5 * 2 + 49 = 59 byte
     */
-    PyObject_HEAD
-    Py_ssize_t length;          /* Number of code points in the string */
-    Py_hash_t hash;             /* Hash value; -1 if not set */
+
+    PyObject_HEAD               /* obj 头ob_refcnt 和 ob_type指针 */
+    Py_ssize_t length;          /* Number of code points in the string 字符串长度 */
+    Py_hash_t hash;             /* Hash value; -1 if not set 字符哈希值 */
     struct {
         /*
            SSTATE_NOT_INTERNED (0)
@@ -172,14 +197,15 @@ typedef struct {
            dictionary to this object are *not* counted in ob_refcnt.
          */
         unsigned int interned:2;
-        /* Character size:
 
-           - PyUnicode_WCHAR_KIND (0):
+        /* Character size 支付长度类型:
+
+           - PyUnicode_WCHAR_KIND (0) 取平台字长:
 
              * character type = wchar_t (16 or 32 bits, depending on the
                platform)
 
-           - PyUnicode_1BYTE_KIND (1):
+           - PyUnicode_1BYTE_KIND (1) 单字节:
 
              * character type = Py_UCS1 (8 bits, unsigned)
              * all characters are in the range U+0000-U+00FF (latin1)
@@ -187,63 +213,107 @@ typedef struct {
                (ASCII), otherwise at least one character is in the range
                U+0080-U+00FF
 
-           - PyUnicode_2BYTE_KIND (2):
+           - PyUnicode_2BYTE_KIND (2) 双字节:
 
              * character type = Py_UCS2 (16 bits, unsigned)
              * all characters are in the range U+0000-U+FFFF (BMP)
              * at least one character is in the range U+0100-U+FFFF
 
-           - PyUnicode_4BYTE_KIND (4):
+           - PyUnicode_4BYTE_KIND (4) 四字节:
 
              * character type = Py_UCS4 (32 bits, unsigned)
              * all characters are in the range U+0000-U+10FFFF
              * at least one character is in the range U+10000-U+10FFFF
          */
+
         unsigned int kind:3;
         /* Compact is with respect to the allocation scheme. Compact unicode
            objects only require one memory block while non-compact objects use
            one block for the PyUnicodeObject struct and another for its data
-           buffer. */
+           buffer.
+           用于区分字符底层存储单元的大小: Latin1编码 1 / UCS2编码 2 / UCS4编码 4
+         */
+
         unsigned int compact:1;
         /* The string only contains characters in the range U+0000-U+007F (ASCII)
            and the kind is PyUnicode_1BYTE_KIND. If ascii is set and compact is
-           set, use the PyASCIIObject structure. */
+           set, use the PyASCIIObject structure.
+           内存分配方式，对象与文本缓冲区是否分离
+         */
+
         unsigned int ascii:1;
         /* The ready flag indicates whether the object layout is initialized
            completely. This means that this is either a compact object, or
            the data pointer is filled out. The bit is redundant, and helps
-           to minimize the test in PyUnicode_IS_READY(). */
+           to minimize the test in PyUnicode_IS_READY().
+           字符串是否是纯ASCII字符串: 1是 / 0否
+        */
+
         unsigned int ready:1;
         /* Padding to ensure that PyUnicode_DATA() is always aligned to
            4 bytes (see issue #19537 on m68k). */
+
         unsigned int :24;
-    } state;
-    wchar_t *wstr;              /* wchar_t representation (null-terminated) */
-} PyASCIIObject;
+        /* 保留24bit */
+    } state;         /* 存储结构描述状态位 */
+    wchar_t *wstr;              /* 字符串指针 wchar_t representation (null-terminated) */
+} PyASCIIObject;                /*  */
+
 
 /* Non-ASCII strings allocated through PyUnicode_New use the
    PyCompactUnicodeObject structure. state.compact is set, and the data
-   immediately follow the structure. */
+   immediately follow the structure.
+   含有非ascii 码的Unicode 存储对象
+
+                            32bit os        64bit os(内存须8字节对齐)     名称
+          +-------------+                                                            \
+    /     | ob_refcnt   |      4byte             8byte              引用计数
+ PyObject +-------------+                                                             |
+    \     | ob_type     |      4byte             8byte              类型描述结构体指针
+          +-------------+                                                             |
+          | length      |      4byte             8byte              字符串长度            => PyASCIIObject
+          +-------------+                                                             |
+          | hash        |      4byte             8byte              字符串哈希值
+          +-------------+                                                             |
+          | state       |      4byte             8byte              存储结构描述状态位
+          +-------------+                                                             |
+          | wstr        |      4byte             8byte              字符串buf指针      /
+          +-------------+
+          | utf8_length |      4byte             8byte              UTF8 编码的字符长度
+          +-------------+
+          | utf8        |      4byte             8byte              UTF8 编码字符串指针
+          +-------------+
+          | wstr_length |      4byte             8byte              宽字符的数量
+          +-------------+
+          | '\n'        |      2byte             2byte              结束符
+          +-------------+
+                               38byte            74byte
+
+        总长度是ascii与unicode混合码字符串长度 * 2 + 38或74 bytes, 例如python里 s = 'hello世界'
+            1. 32bit  占用内存 7 * 2 + 38 = 52 byte
+            2. 64bit  占用内存 7 * 2 + 74 = 59 byte
+ */
 typedef struct {
-    PyASCIIObject _base;
+    PyASCIIObject _base;        /* ASCII 基本对象 */
     Py_ssize_t utf8_length;     /* Number of bytes in utf8, excluding the
-                                 * terminating \0. */
+                                 * terminating \0. UTF8 编码的字符长度 */
     char *utf8;                 /* UTF-8 representation (null-terminated) */
     Py_ssize_t wstr_length;     /* Number of code points in wstr, possible
                                  * surrogates count as two code points. */
 } PyCompactUnicodeObject;
 
+
 /* Strings allocated through PyUnicode_FromUnicode(NULL, len) use the
    PyUnicodeObject structure. The actual string data is initially in the wstr
    block, and copied into the data block using _PyUnicode_Ready. */
 typedef struct {
-    PyCompactUnicodeObject _base;
+    PyCompactUnicodeObject _base; /* 36byte 紧凑型unicode */
     union {
         void *any;
         Py_UCS1 *latin1;
         Py_UCS2 *ucs2;
         Py_UCS4 *ucs4;
-    } data;                     /* Canonical, smallest-form Unicode buffer */
+    } data;                     /* 4byte Canonical, smallest-form Unicode buffer */
 } PyUnicodeObject;
 
 PyAPI_FUNC(int) _PyUnicode_CheckConsistency(
@@ -438,7 +508,9 @@ enum PyUnicode_Kind {
 
 /* Return a maximum character value which is suitable for creating another
    string based on op.  This is always an approximation but more efficient
-   than iterating over the string. */
+   than iterating over the string.
+   根据对象指针的op->state.ascii 和op->state.kind确定字符最大值范围
+ */
 #define PyUnicode_MAX_CHAR_VALUE(op) \
     (assert(PyUnicode_IS_READY(op)),                                    \
      (PyUnicode_IS_ASCII(op) ?                                          \
