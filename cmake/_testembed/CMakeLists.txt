@@ -1,0 +1,5 @@
+project(_testembed)
+include_directories(${baseIncludeDirs})
+add_library(_testembed SHARED  ${CMAKE_SOURCE_DIR}/Programs/_testembed.c)
+target_link_directories(_testembed PUBLIC ${OUT_DIR})
+target_link_libraries(_testembed ${PYTHONLIBS})

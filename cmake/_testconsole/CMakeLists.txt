@@ -1,0 +1,5 @@
+project(_testconsole)
+include_directories(${baseIncludeDirs})
+add_library(_testconsole SHARED  ${CMAKE_SOURCE_DIR}/PC/_testconsole.c)
+target_link_directories(_testconsole PUBLIC ${OUT_DIR})
+target_link_libraries(_testconsole ${PYTHONLIBS})

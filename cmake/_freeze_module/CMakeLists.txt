@@ -1,0 +1,148 @@
+project(_freeze_module)
+
+include_directories(${baseIncludeDirs})
+
+add_definitions(-DPy_NO_ENABLE_SHARED
+                -DPy_BUILD_CORE
+                -D_CONSOLE
+                )
+
+add_compile_definitions(PY3_DLLNAME=L\"python3\")
+add_compile_definitions(VPATH=\"..\\..\")
+
+add_executable(_freeze_module
+            ${CMAKE_SOURCE_DIR}/Modules/atexitmodule.c
+            ${CMAKE_SOURCE_DIR}/Modules/faulthandler.c
+            ${CMAKE_SOURCE_DIR}/Modules/gcmodule.c
+            ${CMAKE_SOURCE_DIR}/Modules/getbuildinfo.c
+            ${CMAKE_SOURCE_DIR}/Modules/getpath_noop.c
+            ${CMAKE_SOURCE_DIR}/Modules/posixmodule.c
+            ${CMAKE_SOURCE_DIR}/Modules/signalmodule.c
+            ${CMAKE_SOURCE_DIR}/Modules/_tracemalloc.c
+            ${CMAKE_SOURCE_DIR}/Modules/_io/_iomodule.c
+            ${CMAKE_SOURCE_DIR}/Modules/_io/bufferedio.c
+            ${CMAKE_SOURCE_DIR}/Modules/_io/bytesio.c
+            ${CMAKE_SOURCE_DIR}/Modules/_io/fileio.c
+            ${CMAKE_SOURCE_DIR}/Modules/_io/iobase.c
+            ${CMAKE_SOURCE_DIR}/Modules/_io/stringio.c
+            ${CMAKE_SOURCE_DIR}/Modules/_io/textio.c
+            ${CMAKE_SOURCE_DIR}/Modules/_io/winconsoleio.c
+            ${CMAKE_SOURCE_DIR}/Objects/abstract.c
+            ${CMAKE_SOURCE_DIR}/Objects/accu.c
+            ${CMAKE_SOURCE_DIR}/Objects/boolobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/bytearrayobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/bytes_methods.c
+            ${CMAKE_SOURCE_DIR}/Objects/bytesobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/call.c
+            ${CMAKE_SOURCE_DIR}/Objects/capsule.c
+            ${CMAKE_SOURCE_DIR}/Objects/cellobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/classobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/codeobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/complexobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/descrobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/dictobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/enumobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/exceptions.c
+            ${CMAKE_SOURCE_DIR}/Objects/fileobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/floatobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/frameobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/funcobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/genericaliasobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/genobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/interpreteridobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/iterobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/listobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/longobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/memoryobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/methodobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/moduleobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/namespaceobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/object.c
+            ${CMAKE_SOURCE_DIR}/Objects/obmalloc.c
+            ${CMAKE_SOURCE_DIR}/Objects/odictobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/picklebufobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/rangeobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/setobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/sliceobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/structseq.c
+            ${CMAKE_SOURCE_DIR}/Objects/tupleobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/typeobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/unicodectype.c
+            ${CMAKE_SOURCE_DIR}/Objects/unicodeobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/unionobject.c
+            ${CMAKE_SOURCE_DIR}/Objects/weakrefobject.c
+            ${CMAKE_SOURCE_DIR}/Parser/myreadline.c
+            ${CMAKE_SOURCE_DIR}/Parser/parser.c
+            ${CMAKE_SOURCE_DIR}/Parser/peg_api.c
+            ${CMAKE_SOURCE_DIR}/Parser/pegen.c
+            ${CMAKE_SOURCE_DIR}/Parser/pegen_errors.c
+            ${CMAKE_SOURCE_DIR}/Parser/action_helpers.c
+            ${CMAKE_SOURCE_DIR}/Parser/string_parser.c
+            ${CMAKE_SOURCE_DIR}/Parser/token.c
+            ${CMAKE_SOURCE_DIR}/Parser/tokenizer.c
+            ${CMAKE_SOURCE_DIR}/PC/invalid_parameter_handler.c
+            ${CMAKE_SOURCE_DIR}/PC/msvcrtmodule.c
+            ${CMAKE_SOURCE_DIR}/PC/winreg.c
+            ${CMAKE_SOURCE_DIR}/Python/_warnings.c
+            ${CMAKE_SOURCE_DIR}/Python/asdl.c
+            ${CMAKE_SOURCE_DIR}/Python/ast.c
+            ${CMAKE_SOURCE_DIR}/Python/ast_opt.c
+            ${CMAKE_SOURCE_DIR}/Python/ast_unparse.c
+            ${CMAKE_SOURCE_DIR}/Python/bltinmodule.c
+            ${CMAKE_SOURCE_DIR}/Python/bootstrap_hash.c
+            ${CMAKE_SOURCE_DIR}/Python/ceval.c
+            ${CMAKE_SOURCE_DIR}/Python/codecs.c
+            ${CMAKE_SOURCE_DIR}/Python/compile.c
+            ${CMAKE_SOURCE_DIR}/Python/context.c
+            ${CMAKE_SOURCE_DIR}/Python/dtoa.c
+            ${CMAKE_SOURCE_DIR}/Python/dynamic_annotations.c
+            ${CMAKE_SOURCE_DIR}/Python/dynload_win.c
+            ${CMAKE_SOURCE_DIR}/Python/errors.c
+            ${CMAKE_SOURCE_DIR}/Python/fileutils.c
+            ${CMAKE_SOURCE_DIR}/Python/formatter_unicode.c
+            ${CMAKE_SOURCE_DIR}/Python/frame.c
+            ${CMAKE_SOURCE_DIR}/Python/future.c
+            ${CMAKE_SOURCE_DIR}/Python/getargs.c
+            ${CMAKE_SOURCE_DIR}/Python/getcompiler.c
+            ${CMAKE_SOURCE_DIR}/Python/getcopyright.c
+            ${CMAKE_SOURCE_DIR}/Python/getopt.c
+            ${CMAKE_SOURCE_DIR}/Python/getplatform.c
+            ${CMAKE_SOURCE_DIR}/Python/getversion.c
+            ${CMAKE_SOURCE_DIR}/Python/hamt.c
+            ${CMAKE_SOURCE_DIR}/Python/hashtable.c
+            ${CMAKE_SOURCE_DIR}/Python/import.c
+            ${CMAKE_SOURCE_DIR}/Python/importdl.c
+            ${CMAKE_SOURCE_DIR}/Python/initconfig.c
+            ${CMAKE_SOURCE_DIR}/Python/marshal.c
+            ${CMAKE_SOURCE_DIR}/Python/modsupport.c
+            ${CMAKE_SOURCE_DIR}/Python/mysnprintf.c
+            ${CMAKE_SOURCE_DIR}/Python/mystrtoul.c
+            ${CMAKE_SOURCE_DIR}/Python/pathconfig.c
+            ${CMAKE_SOURCE_DIR}/Python/preconfig.c
+            ${CMAKE_SOURCE_DIR}/Python/pyarena.c
+            ${CMAKE_SOURCE_DIR}/Python/pyctype.c
+            ${CMAKE_SOURCE_DIR}/Python/pyfpe.c
+            ${CMAKE_SOURCE_DIR}/Python/pyhash.c
+            ${CMAKE_SOURCE_DIR}/Python/pylifecycle.c
+            ${CMAKE_SOURCE_DIR}/Python/pymath.c
+            ${CMAKE_SOURCE_DIR}/Python/pystate.c
+            ${CMAKE_SOURCE_DIR}/Python/pystrcmp.c
+            ${CMAKE_SOURCE_DIR}/Python/pystrhex.c
+            ${CMAKE_SOURCE_DIR}/Python/pystrtod.c
+            ${CMAKE_SOURCE_DIR}/Python/Python-ast.c
+            ${CMAKE_SOURCE_DIR}/Python/pythonrun.c
+            ${CMAKE_SOURCE_DIR}/Python/Python-tokenize.c
+            ${CMAKE_SOURCE_DIR}/Python/pytime.c
+            ${CMAKE_SOURCE_DIR}/Python/specialize.c
+            ${CMAKE_SOURCE_DIR}/Python/structmember.c
+            ${CMAKE_SOURCE_DIR}/Python/suggestions.c
+            ${CMAKE_SOURCE_DIR}/Python/symtable.c
+            ${CMAKE_SOURCE_DIR}/Python/sysmodule.c
+            ${CMAKE_SOURCE_DIR}/Python/thread.c
+            ${CMAKE_SOURCE_DIR}/Python/traceback.c
+            ${CMAKE_SOURCE_DIR}/Programs/_freeze_module.c
+            ${CMAKE_SOURCE_DIR}/PC/config_minimal.c
+)
+
+target_link_libraries(${PROJECT_NAME} version ws2_32 pathcch bcrypt)
+target_link_directories(_freeze_module PRIVATE ${OUT_DIR})
